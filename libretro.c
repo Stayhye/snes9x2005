@@ -425,6 +425,25 @@ static void check_variables(void)
 #endif
 
 static int32_t samples_to_play = 0;
+
+static inline void s9x_ps2_fix_colors(uint16_t *pixels, int width, int height, int pitch)
+{
+    int row_pixels = pitch / sizeof(uint16_t);
+    for (int y = 0; y < height; y++)
+    {
+        uint16_t *row = pixels + (y * row_pixels);
+        for (int x = 0; x < width; x++)
+        {
+            uint16_t p = row[x];
+            // Convert RGB565 to ABGR1555 for PS2
+            uint16_t r = (p & 0xF800) >> 11;
+            uint16_t g = ((p & 0x07E0) >> 1) & 0x03E0;
+            uint16_t b = (p & 0x001F) << 10;
+            row[x] = 0x8000 | b | g | r;
+        }
+    }
+}
+
 void retro_run(void)
 {
    bool updated = false;
@@ -507,6 +526,12 @@ void retro_run(void)
       sceGuFinish();
       video_cb(texture_vram_p, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
 #else
+#ifdef PS2
+      if (GFX.Screen)
+      {
+         s9x_ps2_fix_colors((uint16_t *)GFX.Screen, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
+      }
+#endif
       video_cb(GFX.Screen, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
 #endif
 
